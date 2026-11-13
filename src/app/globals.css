@@ -1,0 +1,93 @@
+@import "tailwindcss";
+@import "./landing.css";
+
+/*
+ * Orpheus Design System Tokens
+ * Unified sans typography (Instrument Sans), high-contrast light & dark palettes.
+ */
+:root {
+  --font-sans: var(--font-instrument), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --or-canvas: #ffffff;
+  --or-canvas-subtle: #f7f9fc;
+  --or-surface: #ffffff;
+  --or-surface-muted: #f1f5f9;
+  --or-ink: #0f172a;
+  --or-ink-muted: #475569;
+  --or-ink-faint: #64748b;
+  --or-line: #e2e8f0;
+  --or-line-strong: #cbd5e1;
+  --or-accent: #0284c7;
+  --or-accent-bright: #38bdf8;
+  --or-accent-ink: #ffffff;
+  --or-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.05),
+    0 20px 44px -18px rgba(15, 23, 42, 0.16);
+}
+
+.dark {
+  --or-canvas: #07090f;
+  --or-canvas-subtle: #0b0f18;
+  --or-surface: #0f1522;
+  --or-surface-muted: #161e30;
+  --or-ink: #f8fafc;
+  --or-ink-muted: #a1b0c4;
+  --or-ink-faint: #64748b;
+  --or-line: rgba(255, 255, 255, 0.09);
+  --or-line-strong: rgba(255, 255, 255, 0.18);
+  --or-accent: #38bdf8;
+  --or-accent-bright: #7dd3fc;
+  --or-accent-ink: #06101d;
+  --or-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.45),
+    0 24px 60px -20px rgba(0, 0, 0, 0.85);
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-color: var(--or-line-strong) transparent;
+}
+
+html,
+body {
+  background-color: var(--or-canvas);
+  color: var(--or-ink);
+  font-family: var(--font-sans);
+  caret-color: var(--or-accent);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--or-line-strong);
+  border-radius: 999px;
+  border: 2px solid var(--or-canvas);
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--or-accent) 26%, transparent);
+  color: var(--or-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
