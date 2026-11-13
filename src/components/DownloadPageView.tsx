@@ -36,9 +36,11 @@ function resolveDesktopColumns(release: OrpheusReleaseData): {
 
   const macArm = findAsset((a) => a.platform === "macos-arm64");
   const macX64 = findAsset((a) => a.platform === "macos-x64");
-  const winPrimary = findAsset((a) => a.platform === "windows" && !a.name.toLowerCase().endsWith(".zip"));
-  const winZip = findAsset((a) => a.platform === "windows" && a.name.toLowerCase().endsWith(".zip"));
-  const linuxAsset = findAsset((a) => a.platform === "linux");
+  const winExe = findAsset((a) => a.platform === "windows" && a.name.toLowerCase().endsWith(".exe"));
+  const winFallback = findAsset((a) => a.platform === "windows");
+  const winPrimary = winExe ?? winFallback;
+  const linuxDeb = findAsset((a) => a.platform === "linux" && a.format === "DEB");
+  const linuxAppImage = findAsset((a) => a.platform === "linux" && a.format !== "DEB");
 
   return {
     macos: [
@@ -46,45 +48,45 @@ function resolveDesktopColumns(release: OrpheusReleaseData): {
         id: "mac-arm64",
         label: "macOS (Apple Silicon)",
         badge: macArm?.format ?? ".dmg",
-        sizeLabel: macArm?.sizeLabel ?? release.tagName,
+        sizeLabel: macArm?.sizeLabel ?? "Coming Soon",
         url: macArm?.url ?? release.htmlUrl,
-        available: Boolean(macArm || release.isLive),
+        available: Boolean(macArm),
       },
       {
         id: "mac-x64",
         label: "macOS (Intel)",
         badge: macX64?.format ?? ".dmg",
-        sizeLabel: macX64?.sizeLabel ?? release.tagName,
+        sizeLabel: macX64?.sizeLabel ?? "Coming Soon",
         url: macX64?.url ?? release.htmlUrl,
-        available: Boolean(macX64 || release.isLive),
+        available: Boolean(macX64),
       },
     ],
     windows: [
       {
         id: "win-x64",
-        label: "Windows (64-bit Installer)",
-        badge: winPrimary?.format ?? ".msix",
-        sizeLabel: winPrimary?.sizeLabel ?? release.tagName,
+        label: "Windows (x64 Installer)",
+        badge: winPrimary?.format ?? ".exe",
+        sizeLabel: winPrimary?.sizeLabel ?? "Coming Soon",
         url: winPrimary?.url ?? release.htmlUrl,
-        available: Boolean(winPrimary || release.isLive),
-      },
-      {
-        id: "win-zip",
-        label: "Windows (Portable Archive)",
-        badge: winZip?.format ?? ".zip",
-        sizeLabel: winZip?.sizeLabel ?? release.tagName,
-        url: winZip?.url ?? release.htmlUrl,
-        available: Boolean(winZip || release.isLive),
+        available: Boolean(winPrimary),
       },
     ],
     linux: [
       {
+        id: "linux-deb",
+        label: "Linux (Debian / Ubuntu)",
+        badge: linuxDeb?.format ?? ".deb",
+        sizeLabel: linuxDeb?.sizeLabel ?? "Coming Soon",
+        url: linuxDeb?.url ?? release.htmlUrl,
+        available: Boolean(linuxDeb),
+      },
+      {
         id: "linux-appimage",
-        label: "Linux (x86_64 Package)",
-        badge: linuxAsset?.format ?? ".AppImage",
-        sizeLabel: linuxAsset?.sizeLabel ?? release.tagName,
-        url: linuxAsset?.url ?? release.htmlUrl,
-        available: Boolean(linuxAsset || release.isLive),
+        label: "Linux (Portable AppImage)",
+        badge: linuxAppImage?.format ?? ".AppImage",
+        sizeLabel: linuxAppImage?.sizeLabel ?? "Coming Soon",
+        url: linuxAppImage?.url ?? release.htmlUrl,
+        available: Boolean(linuxAppImage),
       },
     ],
   };
@@ -105,20 +107,12 @@ function resolveAndroidBuilds(release: OrpheusReleaseData): BuildButtonItem[] {
 
   return [
     {
-      id: "android-full",
+      id: "android-universal",
       label: "Android (Universal APK)",
       badge: ".apk",
-      sizeLabel: release.tagName,
+      sizeLabel: "Coming Soon",
       url: release.htmlUrl,
-      available: release.isLive,
-    },
-    {
-      id: "android-foss",
-      label: "Android (FOSS Edition)",
-      badge: ".apk",
-      sizeLabel: release.tagName,
-      url: release.htmlUrl,
-      available: release.isLive,
+      available: false,
     },
   ];
 }
@@ -145,32 +139,52 @@ function PlatformColumn({
         )}
       </div>
 
-      {items.map((item) => (
-        <a
-          key={item.id}
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => onSelect(item)}
-          className="group flex w-full items-center justify-between rounded-2xl border border-[var(--or-line)] bg-[var(--or-surface)] p-4 text-left transition hover:border-[var(--or-line-strong)] hover:bg-[var(--or-surface-muted)]"
-        >
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="truncate text-sm font-medium text-[var(--or-ink)]">
-              {item.label}
-            </span>
-            <span className="shrink-0 rounded-md border border-[var(--or-line)] bg-[var(--or-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--or-ink-muted)]">
-              {item.badge}
+      {items.map((item) =>
+        item.available ? (
+          <a
+            key={item.id}
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onSelect(item)}
+            className="group flex w-full items-center justify-between rounded-2xl border border-[var(--or-line)] bg-[var(--or-surface)] p-4 text-left transition hover:border-[var(--or-line-strong)] hover:bg-[var(--or-surface-muted)]"
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="truncate text-sm font-medium text-[var(--or-ink)]">
+                {item.label}
+              </span>
+              <span className="shrink-0 rounded-md border border-[var(--or-line)] bg-[var(--or-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--or-ink-muted)]">
+                {item.badge}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 text-xs text-[var(--or-ink-faint)]">
+              <span>{item.sizeLabel}</span>
+              <ArrowDownToLine
+                size={14}
+                className="opacity-70 transition group-hover:translate-y-0.5 group-hover:text-[var(--or-ink)] group-hover:opacity-100"
+              />
+            </div>
+          </a>
+        ) : (
+          <div
+            key={item.id}
+            aria-disabled="true"
+            className="flex w-full cursor-not-allowed items-center justify-between rounded-2xl border border-[var(--or-line)] bg-[var(--or-surface)]/60 p-4 text-left opacity-70"
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="truncate text-sm font-medium text-[var(--or-ink-muted)]">
+                {item.label}
+              </span>
+              <span className="shrink-0 rounded-md border border-[var(--or-line)] bg-[var(--or-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--or-ink-faint)]">
+                {item.badge}
+              </span>
+            </div>
+            <span className="shrink-0 rounded-full border border-[var(--or-line)] bg-[var(--or-surface-muted)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--or-ink-faint)]">
+              Coming Soon
             </span>
           </div>
-          <div className="flex shrink-0 items-center gap-2 text-xs text-[var(--or-ink-faint)]">
-            <span>{item.sizeLabel}</span>
-            <ArrowDownToLine
-              size={14}
-              className="opacity-70 transition group-hover:translate-y-0.5 group-hover:text-[var(--or-ink)] group-hover:opacity-100"
-            />
-          </div>
-        </a>
-      ))}
+        ),
+      )}
     </div>
   );
 }
@@ -289,22 +303,25 @@ export function DownloadPageView({
             </a>
           </div>
           <p className="text-sm leading-relaxed text-[var(--or-ink-muted)]">
-            Desktop installers and silent delta updates are built cleanly via Hydraulic Conveyor. All
-            published packages originate directly from{" "}
+            Native installers for Windows (<code className="text-[var(--or-ink)]">.exe</code>), macOS (
+            <code className="text-[var(--or-ink)]">.dmg</code>), Linux (
+            <code className="text-[var(--or-ink)]">.deb</code> /{" "}
+            <code className="text-[var(--or-ink)]">.AppImage</code>), and Android Universal APK are
+            published directly from{" "}
             <span className="font-medium text-[var(--or-ink)]">alifconstantine/orpheus-release</span>.
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--or-line)] pt-3 text-xs text-[var(--or-ink-faint)]">
             <span className="flex items-center gap-1.5">
               <PackageCheck size={14} className="text-[var(--or-accent)]" />
-              <span>Packaged with Conveyor</span>
+              <span>Linux CLI install: sudo apt install ./orpheus.deb</span>
             </span>
             <a
-              href="https://hydraulic.dev"
+              href={release.htmlUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[var(--or-accent)] hover:underline"
             >
-              hydraulic.dev
+              GitHub Releases
             </a>
           </div>
         </div>

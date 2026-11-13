@@ -5,10 +5,10 @@ import Link from "next/link";
 import { ChevronDown, Download, Laptop, Smartphone, Terminal } from "lucide-react";
 
 const PLATFORM_TARGETS = [
-  { id: "windows", label: "Windows", detail: "Windows 10 / 11 · x64 MSIX / ZIP", href: "/download?os=windows", icon: Laptop },
-  { id: "macos", label: "macOS", detail: "Apple Silicon & Intel · Universal", href: "/download?os=macos", icon: Laptop },
-  { id: "linux", label: "Linux", detail: "Universal x86_64 AppImage / tar.gz", href: "/download?os=linux", icon: Terminal },
-  { id: "android", label: "Android", detail: "Android 8+ APK · Glance Widgets", href: "/download?os=android", icon: Smartphone },
+  { id: "windows", label: "Windows", detail: "Windows 10 / 11 · x64 (.exe)", href: "/download?os=windows", icon: Laptop },
+  { id: "macos", label: "macOS", detail: "Apple Silicon & Intel · Coming Soon", href: "/download?os=macos", icon: Laptop },
+  { id: "linux", label: "Linux", detail: "Debian (.deb) & AppImage · Coming Soon", href: "/download?os=linux", icon: Terminal },
+  { id: "android", label: "Android", detail: "Android 8+ · Universal APK", href: "/download?os=android", icon: Smartphone },
 ] as const;
 
 export function HeroSection() {

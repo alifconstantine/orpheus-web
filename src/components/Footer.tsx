@@ -27,8 +27,8 @@ const COLUMNS = [
     heading: "Platforms",
     links: [
       { label: "Windows Installer", href: "/download?os=windows" },
-      { label: "macOS Universal", href: "/download?os=macos" },
-      { label: "Linux Portable", href: "/download?os=linux" },
+      { label: "macOS (.dmg)", href: "/download?os=macos" },
+      { label: "Linux (.deb / AppImage)", href: "/download?os=linux" },
       { label: "Android APK", href: "/download?os=android" },
     ],
   },
@@ -38,7 +38,7 @@ const COLUMNS = [
       { label: "Download Page", href: "/download" },
       { label: "GitHub Releases", href: RELEASE_PAGE_URL, external: true },
       { label: "Latest Build Tag", href: RELEASE_LATEST_URL, external: true },
-      { label: "Packaged with Conveyor", href: "https://hydraulic.dev", external: true },
+      { label: "Source Code", href: "https://github.com/alifconstantine/orpheus", external: true },
     ],
   },
 ];

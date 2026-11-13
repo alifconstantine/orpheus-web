@@ -58,14 +58,20 @@ export function formatBytes(bytes: number): string {
 export function classifyAsset(asset: RawGithubAsset): CategorizedAsset {
   const lower = asset.name.toLowerCase();
 
-  if (lower.includes("windows") || lower.endsWith(".msix") || lower.endsWith(".exe")) {
+  if (lower.includes("windows") || lower.endsWith(".exe") || lower.endsWith(".msix")) {
+    const isExe = lower.endsWith(".exe");
+    const isZip = lower.endsWith(".zip");
     return {
       id: asset.id,
       name: asset.name,
       platform: "windows",
-      label: "Windows Installer",
-      sublabel: lower.endsWith(".zip") ? "Windows 10/11 (x64 · MSIX Bundle)" : "Windows 10/11 (x64)",
-      format: lower.endsWith(".zip") ? "ZIP + MSIX" : lower.split(".").pop()?.toUpperCase() || "EXE",
+      label: isZip ? "Windows Portable" : "Windows (x64)",
+      sublabel: isExe
+        ? "Windows 10/11 (x64 · Installer)"
+        : isZip
+          ? "Windows 10/11 (x64 · Archive)"
+          : "Windows 10/11 (x64 · MSIX)",
+      format: isZip ? "ZIP" : isExe ? "EXE" : lower.split(".").pop()?.toUpperCase() || "EXE",
       sizeBytes: asset.size,
       sizeLabel: formatBytes(asset.size),
       downloads: asset.download_count,
@@ -90,6 +96,21 @@ export function classifyAsset(asset: RawGithubAsset): CategorizedAsset {
     };
   }
 
+  if (lower.endsWith(".deb")) {
+    return {
+      id: asset.id,
+      name: asset.name,
+      platform: "linux",
+      label: "Linux (Debian / Ubuntu)",
+      sublabel: "amd64 · sudo apt install",
+      format: "DEB",
+      sizeBytes: asset.size,
+      sizeLabel: formatBytes(asset.size),
+      downloads: asset.download_count,
+      url: asset.browser_download_url,
+    };
+  }
+
   if (lower.endsWith(".appimage") || lower.includes("linux")) {
     return {
       id: asset.id,
@@ -106,8 +127,8 @@ export function classifyAsset(asset: RawGithubAsset): CategorizedAsset {
   }
 
   if (lower.endsWith(".apk")) {
-    let label = "Android APK";
-    let sublabel = "Android 8.0+";
+    let label = "Android (Universal APK)";
+    let sublabel = "Android 8.0+ · Universal";
     if (lower.includes("foss")) {
       label = "Android APK (FOSS)";
       sublabel = "Zero proprietary SDKs";
@@ -168,6 +189,79 @@ const FALLBACK_RELEASE: OrpheusReleaseData = {
   assets: [],
 };
 
+async function getLatestReleaseFromHtml(): Promise<OrpheusReleaseData | null> {
+  try {
+    const latestRes = await fetch(RELEASE_LATEST_URL, {
+      redirect: "follow",
+      headers: { "User-Agent": "orpheus-web" },
+      next: { revalidate: 300 },
+    });
+    if (!latestRes.ok || !latestRes.url) return null;
+
+    const tagMatch = latestRes.url.match(/\/releases\/tag\/([^/?#]+)/);
+    const tagName = tagMatch ? decodeURIComponent(tagMatch[1]) : "";
+    if (!tagName) return null;
+
+    const expandedUrl = `https://github.com/${RELEASE_REPO}/releases/expanded_assets/${encodeURIComponent(tagName)}`;
+    const assetsRes = await fetch(expandedUrl, {
+      headers: { "User-Agent": "orpheus-web" },
+      next: { revalidate: 300 },
+    });
+    if (!assetsRes.ok) return null;
+
+    const html = await assetsRes.text();
+    const listItems = html.split("<li ");
+    const assets: RawGithubAsset[] = [];
+
+    for (const block of listItems) {
+      const hrefMatch = block.match(
+        new RegExp(`href="(/${RELEASE_REPO}/releases/download/[^"]+)"`),
+      );
+      if (!hrefMatch) continue;
+
+      const relUrl = hrefMatch[1];
+      const fileName = decodeURIComponent(relUrl.split("/").pop() || "");
+      if (!fileName) continue;
+
+      const sizeMatch = block.match(/>\s*([0-9]+(?:\.[0-9]+)?)\s*(Bytes|KB|MB|GB)\s*<\/span>/i);
+      let sizeBytes = 0;
+      if (sizeMatch) {
+        const val = Number.parseFloat(sizeMatch[1]);
+        const unit = sizeMatch[2].toUpperCase();
+        const mul =
+          unit === "GB"
+            ? 1024 * 1024 * 1024
+            : unit === "MB"
+              ? 1024 * 1024
+              : unit === "KB"
+                ? 1024
+                : 1;
+        sizeBytes = Number.isFinite(val) ? Math.round(val * mul) : 0;
+      }
+
+      assets.push({
+        id: assets.length + 1,
+        name: fileName,
+        size: sizeBytes,
+        download_count: 0,
+        browser_download_url: `https://github.com${relUrl}`,
+      });
+    }
+
+    return normalizeRelease({
+      tag_name: tagName,
+      name: `Orpheus ${tagName}`,
+      published_at: "",
+      html_url: `${RELEASE_PAGE_URL}/tag/${encodeURIComponent(tagName)}`,
+      body: "",
+      prerelease: false,
+      assets,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function getLatestRelease(): Promise<OrpheusReleaseData> {
   try {
     const res = await fetch(RELEASE_API_LATEST, {
@@ -175,7 +269,7 @@ export async function getLatestRelease(): Promise<OrpheusReleaseData> {
         Accept: "application/vnd.github+json",
         "User-Agent": "orpheus-web",
       },
-      next: { revalidate: 900 },
+      next: { revalidate: 300 },
     });
 
     if (res.ok) {
@@ -188,7 +282,7 @@ export async function getLatestRelease(): Promise<OrpheusReleaseData> {
         Accept: "application/vnd.github+json",
         "User-Agent": "orpheus-web",
       },
-      next: { revalidate: 900 },
+      next: { revalidate: 300 },
     });
 
     if (listRes.ok) {
@@ -198,7 +292,12 @@ export async function getLatestRelease(): Promise<OrpheusReleaseData> {
       }
     }
   } catch {
-    // Offline build or rate limit safely falls back without crashing SSR.
+    // Fall through to HTML asset endpoint when REST API is unreachable or rate-limited.
+  }
+
+  const htmlRelease = await getLatestReleaseFromHtml();
+  if (htmlRelease) {
+    return htmlRelease;
   }
 
   return FALLBACK_RELEASE;
